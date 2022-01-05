@@ -5,10 +5,39 @@
 #include <string>
 #include <sstream>
 
+struct Buffers {
+    unsigned int buffer;
+
+    Buffers(unsigned int bufferCount) {
+        glGenBuffers(bufferCount, &this->buffer);
+    }
+
+    void initializeBuffer(int type, int dataSize, void* data, int usage) {
+        glBindBuffer(type, this->buffer);
+        glBufferData(type, dataSize, data, usage);
+    }
+
+};
+
 struct ShaderProgramSource {
     std::string VertexSource;
     std::string FragmenteSource;
 };
+
+void LoadPlayer() {
+    const int POSITION_LENGTH = 6;
+    float positions[POSITION_LENGTH] = {
+        -0.05f, -0.05f,
+         0.0f,  0.05f,
+         0.05f, -0.05f
+    };
+
+    Buffers buffers(1);
+    buffers.initializeBuffer(GL_ARRAY_BUFFER, POSITION_LENGTH * sizeof(float), positions, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+}
 
 static ShaderProgramSource ParseShader(const std::string& filepath) {
     std::ifstream stream(filepath);
@@ -79,42 +108,35 @@ static int CreateShader(const std::string& vertexShader, const std::string& frag
     return program;
 }
 
-int main(void)
-{
-    GLFWwindow* window;
 
-    /* Initialize the library */
+int GLFWSetup(GLFWwindow* window) {
+    /* Make the window's context current */
+    
+    
+    return 0;
+}
+
+int main()
+{
+    /* LIB SETUPS */
     if (!glfwInit())
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
-    if (!window)
-    {
+    GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);;
+    if (!window) {
         glfwTerminate();
         return -1;
     }
 
-    /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
-    if (glewInit() != GLEW_OK)
+    if (glewInit() != GLEW_OK) {
         std::cout << "GLEW INIT ERROR" << std::endl;
+        return -1;
+    }
 
-    float positions[6] = {
-        -0.05f, -0.05f,
-         0.0f,  0.05f,
-         0.05f, -0.05f
-    };
-
-    unsigned int buffer;
-
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), positions, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float)*2, 0);
+    LoadPlayer();
 
     ShaderProgramSource source = ParseShader("src/shaders/Basic.shader");
     

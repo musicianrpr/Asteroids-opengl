@@ -7,14 +7,19 @@
 
 struct Buffers {
     unsigned int buffer;
+    unsigned int dataSize;
 
     Buffers(unsigned int bufferCount) {
         glGenBuffers(bufferCount, &this->buffer);
     }
 
     void initializeBuffer(int type, int dataSize, void* data, int usage) {
+        this->dataSize = dataSize;
         glBindBuffer(type, this->buffer);
         glBufferData(type, dataSize, data, usage);
+    }
+    void rewriteBufferData(void* newData, int* offset) {
+        glNamedBufferSubData(buffer, *offset, dataSize, newData);
     }
 
 };
@@ -108,6 +113,22 @@ static int CreateShader(const std::string& vertexShader, const std::string& frag
     return program;
 }
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    switch (key) {
+        case GLFW_KEY_W:
+            std::cout << "W" << std::endl;
+            break;
+        case GLFW_KEY_A:
+            std::cout << "A" << std::endl;
+            break;
+        case GLFW_KEY_S:
+            std::cout << "S" << std::endl;
+            break;
+        case GLFW_KEY_D:
+            std::cout << "D" << std::endl;
+            break;
+    }
+}
 
 int GLFWSetup(GLFWwindow* window) {
     /* Make the window's context current */
@@ -123,7 +144,10 @@ int main()
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);;
+    GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);
+    
+    glfwSetKeyCallback(window, keyCallback);
+
     if (!window) {
         glfwTerminate();
         return -1;

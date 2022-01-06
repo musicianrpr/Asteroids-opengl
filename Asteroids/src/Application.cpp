@@ -5,40 +5,78 @@
 #include <string>
 #include <sstream>
 
-struct Buffers {
+class Buffers {
     unsigned int buffer;
     unsigned int dataSize;
+    int type;
+    void* data;
+public:
 
-    Buffers(unsigned int bufferCount) {
+    void genBuffers(unsigned int bufferCount) {
         glGenBuffers(bufferCount, &this->buffer);
     }
 
-    void initializeBuffer(int type, int dataSize, void* data, int usage) {
+    void InitializeBuffer(int type, int dataSize, void* data, int usage) {
         this->dataSize = dataSize;
+        this->data = data;
+        this->type = type;
         glBindBuffer(type, this->buffer);
         glBufferData(type, dataSize, data, usage);
     }
-    void rewriteBufferData(void* newData, int* offset) {
-        glNamedBufferSubData(buffer, *offset, dataSize, newData);
-    }
 
+    void RewriteBufferData(void* newData, int* offset) {
+        glBufferSubData(type, 0, dataSize, newData);
+    }
 };
+
+class Player : public Buffers {
+public:
+    static const int arrayLength = 6;
+    float position[arrayLength];
+};
+
+Player g_playerBuffer;
 
 struct ShaderProgramSource {
     std::string VertexSource;
     std::string FragmenteSource;
 };
 
+float* getNewPosition(float oldPosition[Player::arrayLength], float deltaX, float deltaY) {
+    float newPosition[Player::arrayLength];
+    for (int i = 0; i < Player::arrayLength; i++) {
+        if (i % 2 == 0) {
+            newPosition[i] = oldPosition[i] + deltaX;
+        }
+        else {
+            newPosition[i] = oldPosition[i] + deltaY;
+        }
+    }
+
+    return newPosition;
+}
+
+void MovePlayer(float deltaX, float deltaY) {
+    float* newPosition = getNewPosition(g_playerBuffer.position, deltaX, deltaY);
+    g_playerBuffer.RewriteBufferData(newPosition, 0);
+
+    for (int i = 0; i < Player::arrayLength; i++) {
+        g_playerBuffer.position[i] = newPosition[i];
+    }
+}
+
 void LoadPlayer() {
-    const int POSITION_LENGTH = 6;
-    float positions[POSITION_LENGTH] = {
+    float positions[Player::arrayLength] = {
         -0.05f, -0.05f,
-         0.0f,  0.05f,
+         0.0f,   0.05f,
          0.05f, -0.05f
     };
 
-    Buffers buffers(1);
-    buffers.initializeBuffer(GL_ARRAY_BUFFER, POSITION_LENGTH * sizeof(float), positions, GL_STATIC_DRAW);
+    for (int i = 0; i < Player::arrayLength; i++) {
+        g_playerBuffer.position[i] = positions[i];
+    }
+    g_playerBuffer.genBuffers(1);
+    g_playerBuffer.InitializeBuffer(GL_ARRAY_BUFFER, Player::arrayLength * sizeof(float), positions, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
@@ -113,28 +151,26 @@ static int CreateShader(const std::string& vertexShader, const std::string& frag
     return program;
 }
 
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (action == GLFW_RELEASE) return;
+    std::cout << key << std::endl;
+
+    const float DELTA_MOVE = 0.005f;
+
     switch (key) {
         case GLFW_KEY_W:
-            std::cout << "W" << std::endl;
+            MovePlayer(0, DELTA_MOVE);
             break;
         case GLFW_KEY_A:
-            std::cout << "A" << std::endl;
+            MovePlayer(-DELTA_MOVE, 0);
             break;
         case GLFW_KEY_S:
-            std::cout << "S" << std::endl;
+            MovePlayer(0, -DELTA_MOVE);
             break;
         case GLFW_KEY_D:
-            std::cout << "D" << std::endl;
+            MovePlayer(DELTA_MOVE, 0);
             break;
     }
-}
-
-int GLFWSetup(GLFWwindow* window) {
-    /* Make the window's context current */
-    
-    
-    return 0;
 }
 
 int main()
@@ -146,7 +182,7 @@ int main()
     /* Create a windowed mode window and its OpenGL context */
     GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);
     
-    glfwSetKeyCallback(window, keyCallback);
+    glfwSetKeyCallback(window, KeyCallback);
 
     if (!window) {
         glfwTerminate();

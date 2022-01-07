@@ -50,11 +50,6 @@ public:
     float position[arrayLength];
 };
 
-/*class Asteroids : public Buffers {
-public:
-
-};*/
-
 struct ShaderProgram {
     static std::string VertexSource;
     static std::string FragmentSource;
@@ -175,15 +170,8 @@ void LoadPlayer() {
 
     g_playerBuffer.genBuffers(1);
     g_playerBuffer.InitializeBuffer(GL_ARRAY_BUFFER, Player::arrayLength * sizeof(float), positions, GL_STATIC_DRAW);
-
     g_playerBuffer.attribPointer(0, 2, GL_FLOAT, sizeof(float), 0);
 }
-
-
-
-
-
-
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_RELEASE) return;
@@ -255,6 +243,7 @@ int main()
     LoadPlayer();
 
     unsigned int shader = ShaderProgram::CreateShaders("src/shaders/Basic.shader");
+
     glUseProgram(shader);
 
     double previousTime = glfwGetTime();

@@ -208,9 +208,6 @@ int main()
     if (!glfwInit())
         return -1;
 
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glDebugMessageCallback(MessageCallback, 0);
-
     /* Create a windowed mode window and its OpenGL context */
     GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);
     
@@ -228,6 +225,9 @@ int main()
         std::cout << "GLEW INIT ERROR" << std::endl;
         return -1;
     }
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, 0);
 
     LoadPlayer();
 

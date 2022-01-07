@@ -37,6 +37,11 @@ public:
         glBindBuffer(type, this->buffer);
         glBufferSubData(type, 0, dataSize, newData);
     }
+
+    void attribPointer(unsigned int index, int vecSize, unsigned int GLDataType, int typeSize, void* offset) {
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(index, vecSize, GLDataType, GL_FALSE, typeSize * vecSize, offset);
+    }
 };
 
 class Player : public Buffers {
@@ -45,16 +50,97 @@ public:
     float position[arrayLength];
 };
 
+/*class Asteroids : public Buffers {
+public:
+
+};*/
+
+struct ShaderProgram {
+    static std::string VertexSource;
+    static std::string FragmentSource;
+
+    static void ParseShader(const std::string& filepath) {
+        std::ifstream stream(filepath);
+
+        enum class ShaderType {
+            NONE = -1, VERTEX = 0, FRAGMENT = 1
+        };
+
+        std::string line;
+        std::stringstream ss[2];
+        ShaderType type = ShaderType::NONE;
+
+        while (getline(stream, line)) {
+            if (line.find("#shader") != std::string::npos) {
+                if (line.find("vertex") != std::string::npos) {
+                    type = ShaderType::VERTEX;
+                }
+                else if (line.find("fragment") != std::string::npos) {
+                    type = ShaderType::FRAGMENT;
+                }
+            }
+            else {
+                ss[(int)type] << line << "\n";
+            }
+        }
+
+        ShaderProgram::VertexSource = ss[0].str();
+        ShaderProgram::FragmentSource = ss[1].str();
+    }
+
+    static unsigned int CompileShader(unsigned int type, const std::string& source) {
+        unsigned int id = glCreateShader(type);
+        const char* src = source.c_str();
+        glShaderSource(id, 1, &src, nullptr);
+        glCompileShader(id);
+
+        int result;
+        glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+        if (result == GL_FALSE) {
+            int length;
+            glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+            char* message = (char*)alloca(length * sizeof(char));
+            glGetShaderInfoLog(id, length, &length, message);
+
+            std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader!"
+                << std::endl;
+            std::cout << message << std::endl;
+            glDeleteShader(id);
+            return 0;
+        }
+
+        return id;
+    }
+
+    static int CreateShaders(const std::string& filepath) {
+        unsigned int program = glCreateProgram();
+        ParseShader(filepath);
+        unsigned int vs = CompileShader(GL_VERTEX_SHADER, VertexSource);
+        unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, FragmentSource);
+
+        glAttachShader(program, vs);
+        glAttachShader(program, fs);
+
+        glLinkProgram(program);
+        glValidateProgram(program);
+
+        glDetachShader(program, vs);
+        glDetachShader(program, fs);
+
+        glDeleteShader(vs);
+
+        return program;
+    }
+};
+
 Player g_playerBuffer;
 float Buffers::deltaMovement;
-
-struct ShaderProgramSource {
-    std::string VertexSource;
-    std::string FragmenteSource;
-};
+std::string ShaderProgram::VertexSource;
+std::string ShaderProgram::FragmentSource;
 
 float* getNewPosition(float oldPosition[Player::arrayLength], float deltaX, float deltaY) {
     float newPosition[Player::arrayLength];
+
     for (int i = 0; i < Player::arrayLength; i++) {
         if (i % 2 == 0) {
             newPosition[i] = oldPosition[i] + deltaX;
@@ -86,81 +172,18 @@ void LoadPlayer() {
     for (int i = 0; i < Player::arrayLength; i++) {
         g_playerBuffer.position[i] = positions[i];
     }
+
     g_playerBuffer.genBuffers(1);
     g_playerBuffer.InitializeBuffer(GL_ARRAY_BUFFER, Player::arrayLength * sizeof(float), positions, GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    g_playerBuffer.attribPointer(0, 2, GL_FLOAT, sizeof(float), 0);
 }
 
-static ShaderProgramSource ParseShader(const std::string& filepath) {
-    std::ifstream stream(filepath);
 
-    enum class ShaderType {
-        NONE = -1, VERTEX = 0, FRAGMENT = 1
-    };
 
-    std::string line;
-    std::stringstream ss[2];
-    ShaderType type = ShaderType::NONE;
-    while (getline(stream, line)) {
-        if (line.find("#shader") != std::string::npos) {
-            if (line.find("vertex") != std::string::npos) {
-                type = ShaderType::VERTEX;
-            }
-            else if (line.find("fragment") != std::string::npos) {
-                type = ShaderType::FRAGMENT;
-            }
-        }
-        else {
-            ss[(int)type] << line << "\n";
-        }
-    }
 
-    return { ss[0].str(), ss[1].str() };
-}
 
-static unsigned int CompileShader(unsigned int type, const std::string& source) {
-     unsigned int id = glCreateShader(type);
-     const char* src = source.c_str();
-     glShaderSource(id, 1, &src, nullptr);
-     glCompileShader(id);
 
-     int result;
-     glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-     if (result == GL_FALSE) {
-         int length;
-         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
-         char* message = (char*)alloca(length * sizeof(char));
-         glGetShaderInfoLog(id, length, &length, message);
-
-         std::cout << "Failed to compile " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader!"
-             << std::endl;
-         std::cout << message << std::endl;
-         glDeleteShader(id);
-         return 0;
-     }
-
-     return id;
-}
-
-static int CreateShader(const std::string& vertexShader, const std::string& fragmentShader) {
-    unsigned int program = glCreateProgram();
-    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
-
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    glValidateProgram(program);
-
-    glDetachShader(program, vs);
-    glDetachShader(program, fs);
-
-    glDeleteShader(vs);
-
-    return program;
-}
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_RELEASE) return;
@@ -231,9 +254,7 @@ int main()
 
     LoadPlayer();
 
-    ShaderProgramSource source = ParseShader("src/shaders/Basic.shader");
-    
-    unsigned int shader = CreateShader(source.VertexSource, source.FragmenteSource);
+    unsigned int shader = ShaderProgram::CreateShaders("src/shaders/Basic.shader");
     glUseProgram(shader);
 
     double previousTime = glfwGetTime();

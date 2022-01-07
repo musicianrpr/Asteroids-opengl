@@ -5,12 +5,21 @@
 #include <string>
 #include <sstream>
 
+/*
+    TODOS:
+        -Add diagonal movement
+        -Add asteroids
+        -Add collision system
+        -Add shooting
+*/
+
 class Buffers {
     unsigned int buffer;
     unsigned int dataSize;
     int type;
     void* data;
 public:
+    static float deltaMovement;
 
     void genBuffers(unsigned int bufferCount) {
         glGenBuffers(bufferCount, &this->buffer);
@@ -25,6 +34,7 @@ public:
     }
 
     void RewriteBufferData(void* newData, int* offset) {
+        glBindBuffer(type, this->buffer);
         glBufferSubData(type, 0, dataSize, newData);
     }
 };
@@ -36,6 +46,7 @@ public:
 };
 
 Player g_playerBuffer;
+float Buffers::deltaMovement;
 
 struct ShaderProgramSource {
     std::string VertexSource;
@@ -143,8 +154,8 @@ static int CreateShader(const std::string& vertexShader, const std::string& frag
     glLinkProgram(program);
     glValidateProgram(program);
 
-    //glDetachShader(program, vs);
-    //glDetachShader(program, fs);
+    glDetachShader(program, vs);
+    glDetachShader(program, fs);
 
     glDeleteShader(vs);
 
@@ -155,22 +166,40 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     if (action == GLFW_RELEASE) return;
     std::cout << key << std::endl;
 
-    const float DELTA_MOVE = 0.005f;
+    const int MOVEMENT_RATIO = 12;
+    float distanceToMove = MOVEMENT_RATIO / Buffers::deltaMovement;
 
     switch (key) {
         case GLFW_KEY_W:
-            MovePlayer(0, DELTA_MOVE);
+            MovePlayer(0, distanceToMove);
             break;
         case GLFW_KEY_A:
-            MovePlayer(-DELTA_MOVE, 0);
+            MovePlayer(-distanceToMove, 0);
             break;
         case GLFW_KEY_S:
-            MovePlayer(0, -DELTA_MOVE);
+            MovePlayer(0, -distanceToMove);
             break;
         case GLFW_KEY_D:
-            MovePlayer(DELTA_MOVE, 0);
+            MovePlayer(distanceToMove, 0);
             break;
     }
+}
+
+void GLAPIENTRY MessageCallback
+(
+    unsigned int source,
+    unsigned int type,
+    unsigned int id,
+    unsigned int severity,
+    int length,
+    const char* message,
+    const void* userParam
+) {
+    std::cout <<
+        "GL CALLBACK: " << (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "") << std::endl <<
+        "type: " << type << std::endl <<
+        "severity: " << severity << std::endl <<
+        "message" << message << std::endl;
 }
 
 int main()
@@ -178,6 +207,9 @@ int main()
     /* LIB SETUPS */
     if (!glfwInit())
         return -1;
+
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glDebugMessageCallback(MessageCallback, 0);
 
     /* Create a windowed mode window and its OpenGL context */
     GLFWwindow* window = glfwCreateWindow(640, 480, "Asteroids", NULL, NULL);
@@ -190,6 +222,7 @@ int main()
     }
 
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(0);
 
     if (glewInit() != GLEW_OK) {
         std::cout << "GLEW INIT ERROR" << std::endl;
@@ -202,10 +235,22 @@ int main()
     
     unsigned int shader = CreateShader(source.VertexSource, source.FragmenteSource);
     glUseProgram(shader);
-    
+
+    double previousTime = glfwGetTime();
+    int frameCount = 0;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+        double currentTime = glfwGetTime();
+        frameCount++;
+
+        Buffers::deltaMovement = (frameCount / (currentTime - previousTime));
+        if (currentTime - previousTime >= 1.0) {
+            std::cout << Buffers::deltaMovement << std::endl;
+            frameCount = 0;
+            previousTime = currentTime;
+        }
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -216,6 +261,7 @@ int main()
 
         /* Poll for and process events */
         glfwPollEvents();
+    
     }
 
     glDeleteProgram(shader);
